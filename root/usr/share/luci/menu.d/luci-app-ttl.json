@@ -1,0 +1,18 @@
+{
+  "admin/network/mf297d-ttl": {
+    "title": "TTL Control",
+    "order": 85,
+    "action": {
+      "type": "view",
+      "path": "mf297d/ttl"
+    },
+    "depends": {
+      "acl": [
+        "luci-app-ttl"
+      ],
+      "uci": {
+        "mf297d-ttl": true
+      }
+    }
+  }
+}

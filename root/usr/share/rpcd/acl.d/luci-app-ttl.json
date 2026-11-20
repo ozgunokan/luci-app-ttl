@@ -1,5 +1,5 @@
 {
-  "luci-app-mf297d-ttl": {
+  "luci-app-ttl": {
     "description": "Configure TTL and inspect its runtime state",
     "read": {
       "ubus": { "mf297d.ttl": ["status"] },

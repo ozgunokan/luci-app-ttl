@@ -1,0 +1,57 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Loading status…"
+msgstr ""
+
+msgid "TTL Control"
+msgstr ""
+
+msgid "Set a fixed IPv4 TTL on packets leaving the selected internet connections. The default value is 64."
+msgstr ""
+
+msgid "Enable"
+msgstr ""
+
+msgid "IPv4 TTL"
+msgstr ""
+
+msgid "Outgoing networks"
+msgstr ""
+
+msgid "Select lte for mobile broadband, wan for wired internet, or both."
+msgstr ""
+
+msgid "Also set IPv6 Hop Limit"
+msgstr ""
+
+msgid "IPv6 Hop Limit"
+msgstr ""
+
+msgid "Disabled"
+msgstr ""
+
+msgid "Failed to apply"
+msgstr ""
+
+msgid "Active"
+msgstr ""
+
+msgid "Waiting for a connection"
+msgstr ""
+
+msgid "Outgoing devices: "
+msgstr ""
+
+msgid "Packets matched: "
+msgstr ""
+
+msgid "While enabled, IPv4 ECM flow acceleration is paused for all connections; Wi-Fi NSS remains enabled. Disabling TTL control restores the previous ECM state."
+msgstr ""
+
+msgid "Status service is unavailable."
+msgstr ""
+
+msgid "If software or hardware flow offloading is enabled, disable it under Network → Firewall and apply those settings first. IPv6 packets are unchanged unless IPv6 Hop Limit is enabled."
+msgstr ""
