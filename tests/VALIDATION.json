@@ -1,0 +1,31 @@
+{
+  "rpc_and_guards_verified": true,
+  "input_ttl_and_hoplimit": [
+    32,
+    128
+  ],
+  "expected_output_ttl_and_hoplimit": 64,
+  "ipv4_received_ttl64": 800,
+  "ipv6_received_hoplimit64": 800,
+  "accelerated_counts": [
+    "0",
+    "0"
+  ],
+  "survived_fw4_reload": true,
+  "invalid_value_rejected_old_rules_retained": true,
+  "date": "2026-11-21",
+  "hardware": "ZTE MF297D",
+  "kernel": "6.18.60",
+  "scope": "two virtual peers over physical LAN, not LTE/WAN capture or throughput",
+  "english_luci_render_verified": true,
+  "save_apply_enable_disable_verified": true,
+  "upgrade_preserved_configuration": true,
+  "ecm_stop_flags_restored": [
+    "0",
+    "0"
+  ],
+  "nss_and_wifi_remained_enabled": true,
+  "warns": 0,
+  "oopses": 0,
+  "backend_sha256": "4f225e9a63c889215448c44352ceb239222f75a02772b046f497d12aa299d5f8"
+}

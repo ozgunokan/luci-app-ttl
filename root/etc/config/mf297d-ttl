@@ -1,0 +1,7 @@
+config settings 'main'
+	option enabled '0'
+	option ttl '64'
+	list networks 'wan'
+	list networks 'lte'
+	option ipv6 '0'
+	option hop_limit '64'

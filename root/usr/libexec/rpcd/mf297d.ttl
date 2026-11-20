@@ -1,0 +1,10 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+case "$1" in
+	list) echo '{"status":{}}';;
+	call)
+		[ "$2" = status ] || exit 1
+		/usr/sbin/mf297d-ttl status
+		;;
+	*) exit 1;;
+esac

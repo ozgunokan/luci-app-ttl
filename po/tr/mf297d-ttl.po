@@ -1,0 +1,59 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: tr\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Loading status…"
+msgstr "Durum okunuyor…"
+
+msgid "TTL Control"
+msgstr "TTL Sabitleme"
+
+msgid "Set a fixed IPv4 TTL on packets leaving the selected internet connections. The default value is 64."
+msgstr "Seçilen internet bağlantılarından çıkan IPv4 paketlerinin TTL değerini sabitler. Varsayılan değer 64."
+
+msgid "Enable"
+msgstr "Etkinleştir"
+
+msgid "IPv4 TTL"
+msgstr "IPv4 TTL"
+
+msgid "Outgoing networks"
+msgstr "Çıkış bağlantıları"
+
+msgid "Select lte for mobile broadband, wan for wired internet, or both."
+msgstr "LTE için lte, kablolu internet için wan seç. İstersen ikisini birlikte seçebilirsin."
+
+msgid "Also set IPv6 Hop Limit"
+msgstr "IPv6 Hop Limit de sabitlensin"
+
+msgid "IPv6 Hop Limit"
+msgstr "IPv6 Hop Limit"
+
+msgid "Disabled"
+msgstr "Kapalı"
+
+msgid "Failed to apply"
+msgstr "Uygulanamadı"
+
+msgid "Active"
+msgstr "Etkin"
+
+msgid "Waiting for a connection"
+msgstr "Bağlantı bekleniyor"
+
+msgid "Outgoing devices: "
+msgstr "Çıkış aygıtları: "
+
+msgid "Packets matched: "
+msgstr "Kuraldan geçen paketler: "
+
+msgid "While enabled, IPv4 ECM flow acceleration is paused for all connections; Wi-Fi NSS remains enabled. Disabling TTL control restores the previous ECM state."
+msgstr "TTL açıkken IPv4 ECM akış hızlandırması tüm bağlantılarda duraklatılır; Wi-Fi NSS açık kalır. Kapatınca önceki ECM durumu geri yüklenir."
+
+msgid "Status service is unavailable."
+msgstr "Durum servisine erişilemiyor."
+
+msgid "If software or hardware flow offloading is enabled, disable it under Network → Firewall and apply those settings first. IPv6 packets are unchanged unless IPv6 Hop Limit is enabled."
+msgstr "Yazılım/donanım flow offloading açıksa önce Ağ → Güvenlik Duvarı bölümünden kapatıp uygula. TTL, IPv6 Hop Limit seçeneği açılmadıkça IPv6 paketlerini değiştirmez."

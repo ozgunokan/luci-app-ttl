@@ -1,0 +1,10 @@
+{
+  "luci-app-mf297d-ttl": {
+    "description": "Configure TTL and inspect its runtime state",
+    "read": {
+      "ubus": { "mf297d.ttl": ["status"] },
+      "uci": ["mf297d-ttl", "network"]
+    },
+    "write": { "uci": ["mf297d-ttl"] }
+  }
+}

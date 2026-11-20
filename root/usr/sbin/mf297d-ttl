@@ -1,0 +1,181 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Own nft table only. Never flush fw4 or restart NSS/Wi-Fi.
+. /lib/functions.sh
+. /usr/share/libubox/jshn.sh
+STATE=/var/run/mf297d-ttl
+ECM=/proc/sys/net/ecm
+TABLE=mf297d_ttl
+umask 077
+mkdir -p "$STATE"
+
+error() { printf '%s\n' "$*" > "$STATE/error"; logger -t mf297d-ttl "$*"; return 1; }
+number() {
+	case "$1" in ''|*[!0-9]*) return 1;; esac
+	[ "${#1}" -le 3 ] && [ "$1" -ge 1 ] && [ "$1" -le 255 ]
+}
+device_for_network() {
+	case "$1" in ''|*[!a-zA-Z0-9_]*) return 1;; esac
+	dev=$(ubus call "network.interface.$1" status 2>/dev/null | jsonfilter -e '@.l3_device')
+	case "$dev" in ''|*[!a-zA-Z0-9_.:@-]*) return 0;; esac
+	printf '%s\n' "$dev"
+}
+load_settings() {
+	config_load mf297d-ttl
+	config_get_bool enabled main enabled 0
+	config_get ttl main ttl 64
+	config_get_bool ipv6 main ipv6 0
+	config_get hop main hop_limit 64
+	config_get networks main networks 'wan lte'
+	devices=$(for net in $networks; do device_for_network "$net"; done | sort -u)
+}
+guard_release() {
+	family=$1
+	saved="$STATE/previous-$family"
+	[ -f "$saved" ] || return 0
+	previous=$(cat "$saved")
+	case "$previous" in 0|1) ;; *) return 1;; esac
+	if [ -e "$ECM/front_end_${family}_stop" ]; then
+		printf '%s\n' "$previous" > "$ECM/front_end_${family}_stop" || return 1
+	fi
+	rm -f "$saved"
+}
+guard_hold() {
+	family=$1
+	flag="$ECM/front_end_${family}_stop"
+	[ -e "$flag" ] || {
+		[ ! -d /sys/module/ecm ] || { error 'ECM stop interface unavailable; TTL not enabled'; return 1; }
+		return 0
+	}
+	current=$(cat "$flag")
+	case "$current" in 0|1) ;; *) error 'Unexpected ECM state'; return 1;; esac
+	[ -f "$STATE/previous-$family" ] || printf '%s\n' "$current" > "$STATE/previous-$family"
+	if [ "$current" != 1 ]; then
+		printf '1\n' > "$flag" || return 1
+		# Existing connections must be decelerated, not just future ones denied.
+		[ -w /sys/kernel/debug/ecm/ecm_db/defunct_all ] || { error 'ECM defunct interface unavailable'; return 1; }
+		printf '1\n' > /sys/kernel/debug/ecm/ecm_db/defunct_all || return 1
+	fi
+	count=/sys/kernel/debug/ecm/ecm_nss_${family}/accelerated_count
+	[ -r "$count" ] || { error 'ECM acceleration counter unavailable'; return 1; }
+	tries=0
+	while [ "$(cat "$count")" != 0 ]; do
+		[ "$tries" -lt 15 ] || { error 'Waiting for existing accelerated flows to stop'; return 1; }
+		tries=$((tries+1)); sleep 1
+	done
+}
+remove_table() {
+	if nft list table inet "$TABLE" >/dev/null 2>&1; then
+		nft delete table inet "$TABLE" || return 1
+	fi
+}
+stop_rules() {
+	remove_table || return 1
+	guard_release ipv4 || return 1
+	guard_release ipv6 || return 1
+	rm -f "$STATE/signature" "$STATE/devices" "$STATE/error"
+}
+signature() { printf '%s\n' "$enabled/$ttl/$ipv6/$hop/$networks/$devices"; }
+apply_rules() {
+	load_settings
+	[ "$enabled" = 1 ] || { stop_rules; return $?; }
+	number "$ttl" || { error 'TTL must be an integer from 1 to 255'; return 1; }
+	[ "$ipv6" = 0 ] || number "$hop" || { error 'Hop Limit must be an integer from 1 to 255'; return 1; }
+	[ -n "$networks" ] || { error 'Select at least one outgoing network'; return 1; }
+	for net in $networks; do
+		case "$net" in *[!a-zA-Z0-9_]*) error 'Invalid network name'; return 1;; esac
+	done
+	# Kernel flowtables bypass nft postrouting on subsequent packets too.
+	for setting in flow_offloading flow_offloading_hw; do
+		[ "$(uci -q get "firewall.@defaults[0].$setting")" != 1 ] || {
+			error 'Disable software/hardware flow offloading in Firewall settings first'; return 1
+		}
+	done
+	# Check the live flowtable as well, including uncommitted firewall settings.
+	if nft list flowtable inet fw4 ft >/dev/null 2>&1; then
+		error 'An active fw4 flowtable would bypass TTL; disable flow offloading and apply Firewall settings'; return 1
+	fi
+	rules="$STATE/rules.nft"
+	{
+		printf 'add table inet %s\ndelete table inet %s\ntable inet %s {\n' "$TABLE" "$TABLE" "$TABLE"
+		printf ' chain postrouting { type filter hook postrouting priority mangle; policy accept;\n'
+		for dev in $devices; do
+			printf '  meta nfproto ipv4 oifname "%s" counter ip ttl set %s\n' "$dev" "$ttl"
+			[ "$ipv6" = 0 ] || printf '  meta nfproto ipv6 oifname "%s" counter ip6 hoplimit set %s\n' "$dev" "$hop"
+		done
+		printf ' }\n}\n'
+	} > "$rules"
+	nft -c -f "$rules" > "$STATE/nft-check" 2>&1 || { error 'nftables rejected rules; previous rules retained'; return 1; }
+	guard_hold ipv4 || return 1
+	if [ "$ipv6" = 1 ]; then guard_hold ipv6 || return 1; fi
+	nft -f "$rules" || { error 'Could not apply nftables rules'; return 1; }
+	[ "$ipv6" = 1 ] || guard_release ipv6 || return 1
+	signature > "$STATE/signature"
+	printf '%s\n' "$devices" > "$STATE/devices"
+	rm -f "$STATE/error"
+}
+with_lock() {
+	if ! mkdir "$STATE/lock" 2>/dev/null; then
+		pid=$(cat "$STATE/lock/pid" 2>/dev/null)
+		case "$pid" in ''|*[!0-9]*) return 1;; esac
+		[ ! -d "/proc/$pid" ] || return 0
+		rm -f "$STATE/lock/pid"; rmdir "$STATE/lock" || return 1
+		mkdir "$STATE/lock" || return 1
+	fi
+	echo $$ > "$STATE/lock/pid"
+	trap 'rm -f "$STATE/lock/pid"; rmdir "$STATE/lock" 2>/dev/null' EXIT
+	"$@"
+}
+status() {
+	load_settings
+	active=0; packets=0
+	if nft -j list table inet "$TABLE" > "$STATE/counters.json" 2>/dev/null; then
+		active=1
+		packets=$(jsonfilter -i "$STATE/counters.json" -e '@.nftables[*].rule.expr[*].counter.packets' | awk '{s+=$1} END {printf "%.0f",s}')
+	fi
+	json_init
+	json_add_boolean enabled "$enabled"
+	json_add_boolean active "$active"
+	json_add_int ttl "$ttl"
+	json_add_boolean ipv6 "$ipv6"
+	json_add_string devices "$(cat "$STATE/devices" 2>/dev/null | tr '\n' ' ')"
+	json_add_string error "$(cat "$STATE/error" 2>/dev/null)"
+	json_add_int packets "${packets:-0}"
+	json_add_boolean ecm_present "$([ -d /sys/module/ecm ] && echo 1 || echo 0)"
+	json_add_string ecm_ipv4_stop "$(cat "$ECM/front_end_ipv4_stop" 2>/dev/null)"
+	json_add_string ecm_ipv6_stop "$(cat "$ECM/front_end_ipv6_stop" 2>/dev/null)"
+	json_dump
+}
+apply_checked() {
+	if apply_rules; then return 0; fi
+	# A failed first activation must not leave acceleration paused without rules.
+	if ! nft list table inet "$TABLE" >/dev/null 2>&1; then
+		guard_release ipv4
+		guard_release ipv6
+	fi
+	return 1
+}
+guard_checked() {
+	load_settings
+	[ "$enabled" = 1 ] || return 0
+	guard_hold ipv4 || return 1
+	if [ "$ipv6" = 1 ]; then guard_hold ipv6; else guard_release ipv6; fi
+}
+case "${1:-}" in
+	apply) with_lock apply_checked;;
+	stop) with_lock stop_rules;;
+	status) status;;
+	watch)
+		while sleep 3; do
+			load_settings
+			if [ "$enabled" = 1 ]; then
+				if [ "$(signature)" != "$(cat "$STATE/signature" 2>/dev/null)" ] || ! nft list table inet "$TABLE" >/dev/null 2>&1; then
+					"$0" apply
+				else
+					"$0" guard
+				fi
+			fi
+		done;;
+	guard) with_lock guard_checked;;
+	*) echo 'Usage: mf297d-ttl apply|stop|status|watch' >&2; exit 2;;
+esac

@@ -1,0 +1,6 @@
+#!/bin/sh
+case "$ACTION" in
+	ifup|ifupdate|ifdown)
+		/etc/init.d/mf297d-ttl enabled && /etc/init.d/mf297d-ttl reload
+		;;
+esac

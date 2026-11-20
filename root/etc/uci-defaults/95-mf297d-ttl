@@ -1,0 +1,3 @@
+#!/bin/sh
+[ -n "$IPKG_INSTROOT" ] || /etc/init.d/mf297d-ttl enable
+exit 0
